@@ -21,7 +21,7 @@ const Expense = mongoose.model("Expense", expenseSchema);
 
 app.post("/add", async (req,res)=>{
   const { date, amount } = req.body;
-  await Expense.updateOne({ date }, { date, amount }, { upsert:true });
+  await Expense.updateOne({ date }, { date, amount });
   res.redirect("/");
 });
 
