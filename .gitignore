@@ -1,0 +1,17 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python leftovers (safe to ignore)
+__pycache__/
+*.pyc
+venv/

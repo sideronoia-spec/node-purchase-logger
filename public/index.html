@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Daily Expense Logger</title>
+<link rel="stylesheet" href="style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+</head>
+<body>
+<div class="container">
+<h2>Add Expense</h2>
+
+<form action="/add" method="POST">
+  <input type="date" id="date" name="date" required>
+  <input type="number" name="amount" placeholder="Amount" required>
+  <button>Save</button>
+</form>
+
+<h2>History</h2>
+<table id="table"></table>
+<div class="total-box" id="total"></div>
+
+</div>
+<script>
+const today = new Date().toISOString().split("T")[0];
+document.getElementById("date").value = today;
+fetch("/expenses").then(res=>res.json()).then(data=>{
+ let total=0;
+ let rows="<tr><th>Date</th><th>Amount</th><th>X</th></tr>";
+ data.forEach(e=>{
+   total+=e.amount;
+   rows+=`<tr>
+     <td>${e.date}</td>
+     <td>${e.amount}</td>
+     <td><a href="/delete/${e._id}">X</a></td>
+   </tr>`;
+ });
+ document.getElementById("table").innerHTML=rows;
+ document.getElementById("total").innerText="Total: ₹"+total;
+});
+</script>
+</body>
+</html>
