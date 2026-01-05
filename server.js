@@ -1,6 +1,8 @@
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import session from "express-session";
+import bcrypt from "bcrypt";
 
 dotenv.config();
 const app = express();
@@ -9,6 +11,11 @@ const PORT = process.env.PORT || 8080;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false
+}));
 
 // 🔥 MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
@@ -107,13 +114,12 @@ app.get("/expenses", async (req, res) => {
 
 // ❌ Delete expense
 app.get("/delete/:id", async (req, res) => {
-  try {
-    await Expense.findByIdAndDelete(req.params.id);
-    res.redirect("/");
-  } catch (err) {
-    res.status(500).send("Delete failed");
-  }
+  if (!req.session.admin) return res.status(403).send("Admins only");
+
+  await Expense.findByIdAndDelete(req.params.id);
+  res.redirect("/");
 });
+
 
 app.get("/daily-report/:year/:month", async (req, res) => {
   const { year, month } = req.params;
@@ -135,4 +141,30 @@ app.get("/daily-report/:year/:month", async (req, res) => {
   ]);
 
   res.json(data);
+});
+
+app.post("/admin-login", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+    req.session.admin = true;
+    res.redirect("/");
+  } else {
+    res.status(401).send("Invalid Admin Credentials");
+  }
+});
+
+app.get("/admin-logout", (req,res)=>{
+  req.session.destroy();
+  res.redirect("/");
+});
+
+
+app.get("/is-admin", (req, res) => {
+  res.json({ isAdmin: req.session.admin === true });
+});
+app.get("/admin-logout", (req, res) => {
+  req.session.destroy(() => {
+    res.redirect("/");
+  });
 });

@@ -75,3 +75,12 @@ canvas {
   width: 100% !important;
   height: 260px !important;
 }
+.logout {
+  background: crimson;
+  color: white;
+  padding: 10px;
+  border-radius: 10px;
+  width: 100%;
+  border: none;
+  font-weight: bold;
+}

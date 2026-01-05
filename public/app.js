@@ -23,8 +23,12 @@ document.getElementById("date").value = now.toISOString().split("T")[0];
 
 // Load expenses list
 async function loadExpenses() {
+  const adminRes = await fetch("/is-admin");
+  const adminData = await adminRes.json();
+
   const res = await fetch("/expenses");
   const data = await res.json();
+
   expenseList.innerHTML = "";
 
   data.forEach(exp => {
@@ -34,11 +38,12 @@ async function loadExpenses() {
           <div class="date">${exp.date}</div>
           <div class="amount">₹${exp.amount}</div>
         </div>
-        <a class="delete" href="/delete/${exp._id}">🗑</a>
+        ${adminData.isAdmin ? `<a class="delete" href="/delete/${exp._id}">🗑</a>` : ""}
       </div>
     `;
   });
 }
+
 
 // Monthly summary
 async function loadSummary() {
@@ -142,9 +147,52 @@ async function loadDailyChart() {
   });
 }
 
+document.getElementById("adminForm").onsubmit = async (e) => {
+  e.preventDefault();
+
+  await fetch("/admin-login", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      email: adminEmail.value,
+      password: adminPass.value
+    })
+  });
+
+  location.reload();
+};
+const isAdmin = document.cookie.includes("connect.sid");
+
+if(isAdmin){
+  deleteBtn = `<a class="delete" href="/delete/${exp._id}">🗑</a>`;
+}else{
+  deleteBtn = "";
+}
+document.getElementById("logoutBtn").onclick = async () => {
+  await fetch("/admin-logout");
+  location.reload();
+};
+async function loadAdminControls() {
+  const res = await fetch("/is-admin");
+  const data = await res.json();
+
+  const controls = document.getElementById("adminControls");
+
+  if (data.isAdmin) {
+    controls.innerHTML = `<button id="logoutBtn" class="logout">Logout Admin</button>`;
+    document.getElementById("logoutBtn").onclick = async () => {
+      await fetch("/admin-logout");
+      location.reload();
+    };
+  } else {
+    controls.innerHTML = "";
+  }
+}
 
 loadExpenses();
 loadSummary();
 loadMonthlyChart();
 loadDailyChart();
+loadAdminControls();
+
 
