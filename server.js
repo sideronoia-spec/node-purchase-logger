@@ -15,7 +15,7 @@ mongoose.connect(process.env.MONGO_URI, {
   serverSelectionTimeoutMS: 5000
 })
 .then(() => {
-  console.log("MongoDB Connected");
+  console.log("MongoDB Connected:", mongoose.connection.name);
   app.listen(PORT, () =>
     console.log("Server running on port", PORT)
   );
@@ -26,10 +26,13 @@ mongoose.connect(process.env.MONGO_URI, {
 
 // 🔥 Schema
 const expenseSchema = new mongoose.Schema({
-  date: { type: String, required: true },
+  date: { type: String, required: true },        // 2026-01-05
+  month: { type: Number, required: true },       // 1 = Jan
+  year: { type: Number, required: true },        // 2026
   amount: { type: Number, required: true },
   createdAt: { type: Date, default: Date.now }
 });
+
 
 const Expense = mongoose.model("Expense", expenseSchema);
 
@@ -37,12 +40,60 @@ const Expense = mongoose.model("Expense", expenseSchema);
 app.post("/add", async (req, res) => {
   try {
     const { date, amount } = req.body;
-    await Expense.create({ date, amount });
+
+    const d = new Date(date);
+
+    await Expense.create({
+      date,
+      month: d.getMonth() + 1,
+      year: d.getFullYear(),
+      amount
+    });
+
     res.redirect("/");
   } catch (err) {
     res.status(500).send("Failed to add expense");
   }
 });
+app.get("/monthly-summary/:year/:month", async (req, res) => {
+  try {
+    const { year, month } = req.params;
+
+    const summary = await Expense.aggregate([
+      {
+        $match: {
+          month: Number(month),
+          year: Number(year)
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: "$amount" },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.json(summary[0] || { totalAmount: 0, count: 0 });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to calculate monthly total" });
+  }
+});
+app.get("/monthly-report", async (req, res) => {
+  const report = await Expense.aggregate([
+    {
+      $group: {
+        _id: { year: "$year", month: "$month" },
+        total: { $sum: "$amount" }
+      }
+    },
+    { $sort: { "_id.year": -1, "_id.month": -1 } }
+  ]);
+
+  res.json(report);
+});
+
 
 // 📄 Get all expenses
 app.get("/expenses", async (req, res) => {
@@ -62,4 +113,26 @@ app.get("/delete/:id", async (req, res) => {
   } catch (err) {
     res.status(500).send("Delete failed");
   }
+});
+
+app.get("/daily-report/:year/:month", async (req, res) => {
+  const { year, month } = req.params;
+
+  const data = await Expense.aggregate([
+    {
+      $match: {
+        year: Number(year),
+        month: Number(month)
+      }
+    },
+    {
+      $group: {
+        _id: "$date",
+        total: { $sum: "$amount" }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ]);
+
+  res.json(data);
 });
